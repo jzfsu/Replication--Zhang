@@ -109,7 +109,7 @@ graph export "figures/margins_newrace.png", replace width(2000)
 ## Requirements
 
 * **Stata 17+**.
-* No R packages are required.
+
 
 ## Reproducibility & Style
 
