@@ -96,7 +96,7 @@ proportion newrace [pw=weight]
 /* Design-based mean by group (keeps pweights) */
 mean totinc [pw=weight], over(newrace)
 
-/* Or, if you've svyset your design: */
+/* alternative */
 svyset _n [pw=weight]
 svy: mean totinc, over(newrace)
 
