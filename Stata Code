@@ -12,7 +12,7 @@ import delimited using "\\smb-isl01.fsu.edu\citrix\JZ22\Desktop\pumf-98M0001-E-2
 * Make ALL variable names lowercase
 rename *, lower
 	
-* Keep only the variables needed downstream 
+* Keep only the variables needed downstream (now all lowercase)
 keep weight dpgrsum totinc totinc_at sex agegrp ssgrad pr
 	
 	
@@ -87,17 +87,16 @@ gen double lntotinc = cond(totinc > 0, ln(totinc + 1), .)
 label var lntotinc "ln(Total income + 1)"
 histogram lntotinc, normal
 
-
 /************************************************************
 * 4) Weighted descriptives
 ************************************************************/
 proportion newrace [pw=weight]
 
 
-/* Design-based mean by group */
+/* Design-based mean by group (keeps pweights) */
 mean totinc [pw=weight], over(newrace)
 
-/* Alternative mean by group */
+/* Or, if you've svyset your design: */
 svyset _n [pw=weight]
 svy: mean totinc, over(newrace)
 
@@ -109,9 +108,7 @@ svy: mean totinc, over(newrace)
 * Categorical: newrace, sex, age group, education, province
 * Weights: [pw=weight]
 
-regress lntotinc  ///
-    i.newrace i.sex i.agegrp i.ssgrad i.pr ///
-    [pw=weight], vce(robust)
+reg lntotinc i.newrace i.sex i.agegrp i.ssgrad i.pr [pw=weight], vce(robust)
 
 /* Adjusted means (average predicted lntotinc) by race */
 margins newrace
@@ -119,5 +116,10 @@ margins newrace
 marginsplot
 
 
-log close
+* Adjusted means of income by race, shown separately for each sex
+margins newrace, over(sex)
 
+* Plot--Adjusted means of income by race, shown separately for each sex
+marginsplot, xdimension(newrace) by(sex) noci
+
+log close
