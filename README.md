@@ -1,4 +1,4 @@
-# CAnD3 – 2016 Census PUMF: Race & Income Mini Study (Stata)
+# CAnD3 – 2016 Census PUMF: Stratified Earnings: A Mini Study of Racial Income Disparities (Stata)
 
 This repository contains **Stata** code and instructions to replicate a race–income mini study using the **2016 Canadian Census PUMF (Individuals)**. The workflow follows a capture‑free style (rename → label → recode), explicit **pweights** (`weight`), and factor variables (`i.` for categorical, `c.` for continuous).
 
