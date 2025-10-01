@@ -30,17 +30,12 @@ Follow [`DATA_ACCESS.md`](DATA_ACCESS.md) for instructions to obtain the dataset
 
 ### 2. Prepare the Environment
 - Install **Stata 17+**.  
-- Clone this repository to your local machine.  
 - Ensure the folder structure above is intact.  
 - Confirm that logs, figures, and model outputs will be written to their designated folders.  
 
 ---
 
-### 3. Run the Script
-Open Stata and set your working directory to the repository root.  
-Then run the script in `code/CanD3-Zhang.do`.  
-
-The updated `.do` file:  
+### 3. Prepare for the Analysis
 - Uses a **capture-free style** (rename → label → recode).  
 - Sets all variable names to lowercase.  
 - Retains only the subset of variables needed downstream.  
