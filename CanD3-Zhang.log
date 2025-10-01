@@ -1,0 +1,402 @@
+----------------------------------------------------------------------------------
+      name:  <unnamed>
+       log:  \\smb-isl01.fsu.edu\citrix\JZ22\Documents\CanD3-Zhang.log
+  log type:  text
+ opened on:   1 Oct 2025, 16:50:24
+
+. 
+. * Import microdata
+. import delimited using "\\smb-isl01.fsu.edu\citrix\JZ22\Desktop\pumf-98M0001-E-2
+> 016-individuals_F1.csv", ///
+>     varnames(1) clear
+(encoding automatically selected: ISO-8859-1)
+(141 vars, 930,421 obs)
+
+. 
+. * Make ALL variable names lowercase
+. rename *, lower
+  (all newnames==oldnames)
+
+.         
+. * Keep only the variables needed downstream (now all lowercase)
+. keep weight dpgrsum totinc totinc_at sex agegrp ssgrad pr
+
+.         
+.         
+. * Destring ONLY those (if any imported as string)
+. ds, has(type string)
+
+. local strvars `r(varlist)'
+
+. if "`strvars'" != "" {
+.     destring `strvars', replace ignore(" .,-")
+. }
+
+. 
+. compress
+  (0 bytes saved)
+
+. 
+end of do-file
+
+. do "C:\Users\JZ22\AppData\Local\Temp\16\STDa14_000001.tmp"
+
+. /************************************************************
+> * 1) Race from DPGRSUM -> White / Black / Asian / Other
+> *    DPGRSUM codes (2016 PUMF): 
+> *      1 White; 2 South Asian; 3 Chinese; 4 Black; 5 Filipino;
+> *      6 Latin American; 7 Arab; 8 Southeast Asian; 9 West Asian;
+> *     10 Korean; 11 Japanese; 12 VM n.i.e.; 13 Multiple VMs n.i.e.;
+> *     14 White + VM; 15 Aboriginal peoples; 88 Not available.
+> ************************************************************/
+. 
+. 
+. gen newrace = .
+(930,421 missing values generated)
+
+. replace newrace = 1 if dpgrsum == 1                                 // White
+(665,958 real changes made)
+
+. replace newrace = 2 if dpgrsum == 4                                 // Black
+(26,860 real changes made)
+
+. replace newrace = 3 if inlist(dpgrsum, 2,3,5,8,10,11)               // Asian (So
+> uth/Chinese/Filipino/SE Asian/Korean/Japanese)
+(120,366 real changes made)
+
+. replace newrace = 4 if inlist(dpgrsum, 6,7,9,12,13,14,15)           // Other (La
+> tAm/Arab/WestAsian/VM n.i.e./Multiple/White+VM/Aboriginal)
+(96,038 real changes made)
+
+. replace newrace = . if dpgrsum == 88                                // Not avail
+> able -> missing
+(0 real changes made)
+
+. 
+. label define newrace 1 "White" 2 "Black" 3 "Asian" 4 "Other"
+
+. label values newrace newrace
+
+. label var newrace "Race (DPGRSUM recode: White/Black/Asian/Other)"
+
+. 
+. tab dpgrsum, m
+
+    DPGRSUM |      Freq.     Percent        Cum.
+------------+-----------------------------------
+          1 |    665,958       71.58       71.58
+          2 |     48,739        5.24       76.81
+          3 |     39,273        4.22       81.04
+          4 |     26,860        2.89       83.92
+          5 |     19,742        2.12       86.04
+          6 |     11,203        1.20       87.25
+          7 |     13,662        1.47       88.72
+          8 |      7,071        0.76       89.48
+          9 |      6,305        0.68       90.15
+         10 |      4,248        0.46       90.61
+         11 |      1,293        0.14       90.75
+         12 |      2,966        0.32       91.07
+         13 |      4,188        0.45       91.52
+         14 |     13,792        1.48       93.00
+         15 |     43,922        4.72       97.72
+         88 |     21,199        2.28      100.00
+------------+-----------------------------------
+      Total |    930,421      100.00
+
+. tab newrace, m
+
+       Race |
+   (DPGRSUM |
+    recode: |
+White/Black |
+/Asian/Othe |
+         r) |      Freq.     Percent        Cum.
+------------+-----------------------------------
+      White |    665,958       71.58       71.58
+      Black |     26,860        2.89       74.46
+      Asian |    120,366       12.94       87.40
+      Other |     96,038       10.32       97.72
+          . |     21,199        2.28      100.00
+------------+-----------------------------------
+      Total |    930,421      100.00
+
+. 
+. 
+. /************************************************************
+> * 2) Other recodes & labels
+> ************************************************************/
+. 
+. * Sex
+. label define sexlbl 1 "Male" 2 "Female"
+
+. label values sex sexlbl
+
+. label var sex "Sex"
+
+. 
+. * Age group (treat Not available as missing per PUMF convention)
+. recode agegrp (88 = .)
+(9,139 changes made to agegrp)
+
+. label var agegrp "Age group (categorical)"
+
+. 
+. * Secondary school graduation (treat 88/99 as missing)
+. recode ssgrad (88 = .) (99 = .)
+(165,735 changes made to ssgrad)
+
+. label var ssgrad "Highest certificate/diploma (SSGRAD)"
+
+. 
+. * Province / Territory
+. label var pr "Province/Territory (PR)"
+
+. 
+. 
+. /************************************************************
+> * 3) Income cleaning and logs (handle PUMF special codes)
+> *    For continuous income variables, the PUMF uses:
+> *      88,888,888 = Not available; 99,999,999 = Not applicable.
+> ************************************************************/
+. 
+. * Mark PUMF "not available / not applicable" as missing before logs
+. replace totinc     = . if inlist(totinc,     88888888, 99999999)
+(194,147 real changes made, 194,147 to missing)
+
+. replace totinc_at  = . if inlist(totinc_at,  88888888, 99999999)
+(193,828 real changes made, 193,828 to missing)
+
+. 
+. * Log transform 
+. 
+. gen double lntotinc = cond(totinc > 0, ln(totinc + 1), .)
+(195,909 missing values generated)
+
+. label var lntotinc "ln(Total income + 1)"
+
+. histogram lntotinc, normal
+(bin=58, start=.69314718, width=.23420849)
+
+. 
+end of do-file
+
+. do "C:\Users\JZ22\AppData\Local\Temp\16\STDa14_000002.tmp"
+
+. * 4) Weighted descriptives
+. ************************************************************/
+. proportion newrace [pw=weight]
+
+Proportion estimation                  Number of obs = 909,222
+
+--------------------------------------------------------------
+             |                                   Logit
+             | Proportion   Std. err.     [95% conf. interval]
+-------------+------------------------------------------------
+     newrace |
+      White  |   .7324564   .0004642      .7315455    .7333653
+      Black  |   .0295411   .0001776      .0291951    .0298911
+      Asian  |   .1323797   .0003554      .1316847    .1330779
+      Other  |   .1056228   .0003223      .1049927    .1062562
+--------------------------------------------------------------
+
+. 
+. 
+. /* Design-based mean by group (keeps pweights) */
+. mean totinc [pw=weight], over(newrace)
+
+Mean estimation                            Number of obs = 717,397
+
+------------------------------------------------------------------
+                 |       Mean   Std. err.     [95% conf. interval]
+-----------------+------------------------------------------------
+c.totinc@newrace |
+          White  |   52722.31   106.5466      52513.48    52931.14
+          Black  |   35011.73   306.6894      34410.63    35612.83
+          Asian  |   38662.34   197.2522      38275.74    39048.95
+          Other  |   36321.82   216.5573      35897.37    36746.26
+------------------------------------------------------------------
+
+. 
+. /* Or, if you've svyset your design: */
+. svyset _n [pw=weight]
+
+Sampling weights: weight
+             VCE: linearized
+     Single unit: missing
+        Strata 1: <one>
+ Sampling unit 1: <observations>
+           FPC 1: <zero>
+
+. svy: mean totinc, over(newrace)
+(running mean on estimation sample)
+
+Survey: Mean estimation
+
+Number of strata =       1            Number of obs   =    717,397
+Number of PSUs   = 717,397            Population size = 26,570,378
+                                      Design df       =    717,396
+
+------------------------------------------------------------------
+                 |             Linearized
+                 |       Mean   std. err.     [95% conf. interval]
+-----------------+------------------------------------------------
+c.totinc@newrace |
+          White  |   52722.31   106.5466      52513.48    52931.14
+          Black  |   35011.73   306.6894      34410.63    35612.83
+          Asian  |   38662.34   197.2522      38275.74    39048.95
+          Other  |   36321.82   216.5573      35897.37    36746.26
+------------------------------------------------------------------
+
+. 
+end of do-file
+
+. do "C:\Users\JZ22\AppData\Local\Temp\16\STDa14_000003.tmp"
+
+. *==========================
+. * Weighted OLS 
+. *==========================
+. * Outcome: lntotinc
+. * Categorical: newrace, sex, age group, education, province
+. * Weights: [pw=weight]
+. 
+. reg lntotinc i.newrace i.sex i.agegrp i.ssgrad i.pr [pw=weight], vce(robust)
+(sum of wgt is 26,070,295.905708)
+
+Linear regression                               Number of obs     =    703,895
+                                                F(40, 703854)     =    2710.11
+                                                Prob > F          =     0.0000
+                                                R-squared         =     0.1950
+                                                Root MSE          =     1.3908
+
+------------------------------------------------------------------------------
+             |               Robust
+    lntotinc | Coefficient  std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+     newrace |
+      Black  |  -.4253285   .0118473   -35.90   0.000    -.4485488   -.4021082
+      Asian  |  -.6368673   .0065753   -96.86   0.000    -.6497547   -.6239799
+      Other  |  -.4921135   .0076547   -64.29   0.000    -.5071164   -.4771106
+             |
+         sex |
+     Female  |   .3247348   .0033877    95.86   0.000     .3180951    .3313745
+             |
+      agegrp |
+          7  |   .9175127   .0254951    35.99   0.000     .8675431    .9674822
+          8  |   1.509096   .0229611    65.72   0.000     1.464093    1.554099
+          9  |   2.127354   .0226747    93.82   0.000     2.082913    2.171796
+         10  |   2.454094   .0224475   109.33   0.000     2.410097     2.49809
+         11  |   2.595668   .0223772   116.00   0.000      2.55181    2.639527
+         12  |   2.652327   .0224198   118.30   0.000     2.608385    2.696269
+         13  |   2.643245   .0224718   117.63   0.000     2.599202    2.687289
+         14  |   2.585309   .0224512   115.15   0.000     2.541305    2.629313
+         15  |   2.490617   .0225933   110.24   0.000     2.446335    2.534899
+         16  |   2.350477   .0225843   104.08   0.000     2.306213    2.394742
+         17  |   2.442437   .0220903   110.57   0.000     2.399141    2.485733
+         18  |   2.439903    .022071   110.55   0.000     2.396645    2.483162
+         19  |   2.441766   .0222364   109.81   0.000     2.398183    2.485348
+         20  |   2.491308   .0223465   111.49   0.000      2.44751    2.535107
+         21  |   2.562334   .0223646   114.57   0.000       2.5185    2.606168
+             |
+      ssgrad |
+          2  |   .3162391   .0106335    29.74   0.000     .2953979    .3370803
+          3  |   .2706826   .0200173    13.52   0.000     .2314494    .3099159
+          4  |   .3107919   .0058164    53.43   0.000     .2993919    .3221918
+          5  |   .5154025   .0067386    76.48   0.000      .502195      .52861
+          6  |   .5875589   .0058701   100.09   0.000     .5760538    .5990641
+          7  |   .6331945   .0104627    60.52   0.000      .612688     .653701
+          8  |   .8167863   .0064867   125.92   0.000     .8040726       .8295
+          9  |   .8996741   .0137652    65.36   0.000     .8726947    .9266535
+         10  |   1.248082   .0287205    43.46   0.000     1.191791    1.304373
+         11  |   .9703481   .0092621   104.77   0.000     .9521946    .9885015
+         12  |    1.16676   .0216909    53.79   0.000     1.124246    1.209273
+             |
+          pr |
+         11  |  -.0473846   .0253471    -1.87   0.062     -.097064    .0022949
+         12  |  -.0958814   .0154225    -6.22   0.000    -.1261091   -.0656538
+         13  |  -.0897049   .0153773    -5.83   0.000    -.1198439   -.0595658
+         24  |  -.0067416   .0122633    -0.55   0.582    -.0307772     .017294
+         35  |   .0103378   .0123076     0.84   0.401    -.0137847    .0344603
+         46  |   .0570178   .0153334     3.72   0.000     .0269649    .0870707
+         47  |   .1655932   .0155919    10.62   0.000     .1350336    .1961527
+         48  |   .2863333   .0129614    22.09   0.000     .2609294    .3117373
+         59  |  -.0154024   .0130152    -1.18   0.237    -.0409118     .010107
+         70  |   .4785987    .041294    11.59   0.000     .3976638    .5595337
+             |
+       _cons |   7.324898   .0245582   298.27   0.000     7.276764    7.373031
+------------------------------------------------------------------------------
+
+. 
+. /* Adjusted means (average predicted lntotinc) by race */
+. margins newrace
+
+Predictive margins                                     Number of obs = 703,895
+Model VCE: Robust
+
+Expression: Linear prediction, predict()
+
+------------------------------------------------------------------------------
+             |            Delta-method
+             |     Margin   std. err.      t    P>|t|     [95% conf. interval]
+-------------+----------------------------------------------------------------
+     newrace |
+      White  |   10.31276   .0017567  5870.38   0.000     10.30932     10.3162
+      Black  |   9.887433   .0117141   844.06   0.000     9.864473    9.910392
+      Asian  |   9.675894   .0062527  1547.47   0.000     9.663639    9.688149
+      Other  |   9.820648   .0074148  1324.47   0.000     9.806115     9.83518
+------------------------------------------------------------------------------
+
+. 
+. marginsplot
+
+Variables that uniquely identify margins: newrace
+
+. 
+end of do-file
+
+. do "C:\Users\JZ22\AppData\Local\Temp\16\STDa14_000004.tmp"
+
+. * Adjusted means of income by race, shown separately for each sex
+. margins newrace, over(sex)
+
+Predictive margins                                     Number of obs = 703,895
+Model VCE: Robust
+
+Expression: Linear prediction, predict()
+Over:       sex
+
+-------------------------------------------------------------------------------
+              |            Delta-method
+              |     Margin   std. err.      t    P>|t|     [95% conf. interval]
+--------------+----------------------------------------------------------------
+  sex#newrace |
+  Male#White  |   10.16913   .0023585  4311.62   0.000     10.16451    10.17375
+  Male#Black  |   9.743801   .0117732   827.63   0.000     9.720726    9.766876
+  Male#Asian  |   9.532262   .0064569  1476.29   0.000     9.519607    9.544917
+  Male#Other  |   9.677016    .007524  1286.15   0.000     9.662269    9.691763
+Female#White  |   10.46311   .0024754  4226.92   0.000     10.45826    10.46797
+Female#Black  |   10.03778   .0118913   844.13   0.000     10.01448    10.06109
+Female#Asian  |   9.826246   .0064818  1515.97   0.000     9.813542     9.83895
+Female#Other  |      9.971   .0076749  1299.16   0.000     9.955957    9.986043
+-------------------------------------------------------------------------------
+
+. 
+end of do-file
+
+. do "C:\Users\JZ22\AppData\Local\Temp\16\STDa14_000005.tmp"
+
+. * Plot
+. marginsplot, xdimension(newrace) by(sex) noci
+
+Variables that uniquely identify margins: newrace sex
+
+. 
+end of do-file
+
+. do "C:\Users\JZ22\AppData\Local\Temp\16\STDa14_000006.tmp"
+
+. log close
+      name:  <unnamed>
+       log:  \\smb-isl01.fsu.edu\citrix\JZ22\Documents\CanD3-Zhang.log
+  log type:  text
+ closed on:   1 Oct 2025, 16:52:43
+----------------------------------------------------------------------------------
