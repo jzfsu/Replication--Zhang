@@ -1,33 +1,34 @@
-DATA_ACCESS.md — 2016 Census PUMF (Individuals)
-Data Accessibility
+# DATA_ACCESS.md — 2016 Census PUMF (Individuals)
 
-The 2016 Canadian Census Public Use Microdata File (PUMF) used in this project is not distributed with this repository due to Statistics Canada licensing.
+## Data Accessibility Statement
+The **2016 Canadian Census Public Use Microdata File (PUMF)** used in this project is **not distributed** in this repository due to Statistics Canada licensing restrictions.
 
-How to obtain the data (CAnD3 course users):
+### How to obtain the data (CAnD3 users)
+1. Log in to the **CAnD3 Canvas** site.  
+2. Open **RRWM | Data Activity**.  
+3. Download the dataset provided by the instructor.  
+4. Save the file into a local folder named `data/` in this repository.
 
-Log in to the CAnD3 Canvas site.
+> If your download has a different filename, rename it or update the paths in your code.
 
-Open RRWM | Data Activity.
+---
 
-Download the dataset provided by the instructor.
+## Required Files & Paths
+- **CSV microdata** → `data/pumf-98M0001-E-2016-individuals_F1.csv`  
+- *(Optional)* **Codebook PDF** → `docs/pumf-98M0001-E-2016-individuals.pdf`
 
-Save it locally in a folder named data/ (create if missing).
+Create folders if needed: `data/` and `docs/`.
 
-If your downloaded filename differs from the one below, either rename it or update paths in your code.
+---
 
-Required Files & Placement
-
-CSV microdata: data/pumf-98M0001-E-2016-individuals_F1.csv
-
-(Optional) Codebook PDF: docs/pumf-98M0001-E-2016-individuals.pdf
-
-Stata Quick Start
+## Stata Quick Start
+```stata
 version 18.0
 import delimited using "data/pumf-98M0001-E-2016-individuals_F1.csv", varnames(1) clear
 rename *, lower
 keep weight dpgrsum totinc totinc_at sex agegrp ssgrad pr
 
-* Income special-missing → .
+* Handle special-missing income codes before any summaries/logs
 replace totinc    = . if inlist(totinc,    88888888, 99999999)
 replace totinc_at = . if inlist(totinc_at, 88888888, 99999999)
 
@@ -43,6 +44,21 @@ label values newrace newrace
 * Weights
 svyset _n [pw=weight]
 
-Data Citation
+
+Citation
 
 Statistics Canada. 2019. Census of Population, 2016 [Canada] Public Use Microdata File (PUMF): Individuals File. Statistics Canada [producer and distributor], accessed September 10, 2021. ID: pumf-98M0001-E-2016-individuals.
+
+License
+
+Use and redistribution must comply with Statistics Canada licensing terms for the 2016 Census PUMF.
+
+Do not commit or distribute the raw PUMF in this repository.
+
+Share only derived, de-identified outputs that conform to the license and course/institutional policies.
+
+
+
+
+
+
