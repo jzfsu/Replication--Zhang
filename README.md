@@ -1,123 +1,108 @@
-# CAnD3 – 2016 Census PUMF: Stratified Earnings: A Mini Study of Racial Income Disparities (Stata)
+# CAnD3 – 2016 Census PUMF: Stratified Earnings  
+*A Mini Study of Racial Income Disparities (Stata)*
 
-This repository contains **Stata** code and instructions to replicate a race–income mini study using the **2016 Canadian Census PUMF (Individuals)**. The workflow follows a capture‑free style (rename → label → recode), explicit **pweights** (`weight`), and factor variables (`i.` for categorical, `c.` for continuous).
+This repository provides a reproducibility exercise using the **2016 Canadian Census Public Use Microdata File (PUMF: Individuals)**.  
+The goal is to replicate a **race–income mini study** in Stata, applying good practices in data cleaning, survey weighting, and regression modeling.
 
-## Contents
+---
 
-* `code/CanD3-Zhang.do` — Main Stata script for this mini study.
-* `data/pumf-98M0001-E-2016-individuals_F1.csv` — Raw PUMF (Individuals) file (place here locally if not using a network path).
-* `docs/pumf-98M0001-E-2016-individuals.pdf` — PUMF documentation (optional for reference).
-* `logs/CanD3-Zhang.log` — Stata log (if using local paths).
-* `figures/` — (optional) where plots can be exported.
-* `models/` — (optional) where model output can be saved as `.txt`.
+## Repository Structure
 
-## How to Run
+- `code/CanD3-Zhang.do` — Main Stata script (updated, capture-free style).  
+- `data/` — Place the Census PUMF CSV here (not distributed).  
+- `docs/` — Optional documentation (PUMF codebook PDF).  
+- `logs/` — Stata log files.  
+- `figures/` — (optional) plots exported by the analysis.  
+- `models/` — (optional) regression results and text outputs.  
 
-### Recommended: local repo paths
+---
 
-Edit the import/log lines to use this repo’s folders, then run the do‑file.
+## How to Reproduce the Analysis
 
-```stata
-cd "path/to/repo"
-log using "logs/CanD3-Zhang.log", replace
-import delimited using "data/pumf-98M0001-E-2016-individuals_F1.csv", varnames(1) clear
+### 1. Obtain the Data
+The raw **2016 Census PUMF (Individuals)** is not distributed here due to Statistics Canada licensing restrictions.  
+Follow [`DATA_ACCESS.md`](DATA_ACCESS.md) for instructions to obtain the dataset.  
 
-rename *, lower
-keep weight dpgrsum totinc totinc_at sex agegrp ssgrad pr
-```
+- Save the CSV into `data/`.  
+- (Optional) Save the codebook PDF into `docs/`.  
 
-Then:
+---
 
-```stata
-do code/CanD3-Zhang.do
-```
+### 2. Prepare the Environment
+- Install **Stata 17+**.  
+- Clone this repository to your local machine.  
+- Ensure the folder structure above is intact.  
+- Confirm that logs, figures, and model outputs will be written to their designated folders.  
 
-## Variables Used (kept from the PUMF)
+---
 
-`weight` (person weight), `dpgrsum` (visible minority/White), `totinc`, `totinc_at`, `sex`, `agegrp`, `ssgrad`, `pr`.
+### 3. Run the Script
+Open Stata and set your working directory to the repository root.  
+Then run the script in `code/CanD3-Zhang.do`.  
 
-## Race Recode (dpgrsum → newrace)
+The updated `.do` file:  
+- Uses a **capture-free style** (rename → label → recode).  
+- Sets all variable names to lowercase.  
+- Retains only the subset of variables needed downstream.  
+- Destrings variables if necessary.  
+- Applies consistent labels for race, sex, age, education, and province.  
+- Cleans income variables by converting special PUMF codes to missing.  
+- Generates a log income variable for analysis.  
 
-The script creates **`newrace`** with the following mapping (2016 PUMF codes):
+---
 
-* **1 → White**
-* **4 → Black**
-* **{2, 3, 5, 8, 10, 11} → Asian** (South Asian, Chinese, Filipino, Southeast Asian, Korean, Japanese)
-* **{6, 7, 9, 12, 13, 14, 15} → Other** (Latin American, Arab, West Asian, VM n.i.e., Multiple VMs n.i.e., White+VM, Aboriginal peoples)
-* **88 → missing** (Not available)
+### 4. Analysis Steps
+The analysis proceeds in the following stages:
 
-Labels:
+1. **Race recoding**  
+   - PUMF `dpgrsum` is recoded into a simplified `newrace` variable: White, Black, Asian, Other.  
 
-```stata
-label define newrace 1 "White" 2 "Black" 3 "Asian" 4 "Other"
-label values newrace newrace
-label var newrace "Race (DPGRSUM recode: White/Black/Asian/Other)"
-```
+2. **Other recodes**  
+   - Sex, age groups, secondary school graduation, and province are relabeled.  
+   - “Not available” codes are consistently treated as missing.  
 
-## Cleaning & Transforms
+3. **Income cleaning and transformation**  
+   - Special PUMF income codes (e.g., 88,888,888 and 99,999,999) are marked as missing.  
+   - Log income (`lntotinc`) is generated for regression analysis.  
 
-Convert PUMF special codes to missing **before** logs:
+4. **Weighted descriptives**  
+   - Race composition is estimated using person-level weights.  
+   - Design-based means of income are calculated by race.  
 
-```stata
-replace totinc    = . if inlist(totinc,    88888888, 99999999)
-replace totinc_at = . if inlist(totinc_at, 88888888, 99999999)
+5. **Regression modeling**  
+   - Weighted OLS regression of log income on race, sex, age group, education, and province.  
+   - Robust standard errors are applied.  
 
-gen double lntotinc = cond(totinc > 0, ln(totinc + 1), .)
-label var lntotinc "ln(Total income + 1)"
-```
+6. **Postestimation**  
+   - Adjusted means of income are computed by race.  
+   - Results are visualized using margins plots, including breakdowns by sex.  
 
-## Weighted Descriptives
+---
 
-* Race composition:
+## Reproducibility Standards
+- **Weights**: All analyses use person-level weights (`[pw=weight]`).  
+- **Design-based methods**: Means and regression models account for survey design.  
+- **Clean style**: Explicit recodes and labeling; no `capture drop`.  
+- **Transparency**: Logs record the workflow from start to finish.  
+- **Outputs**: Figures and models are saved in separate folders for clarity.  
 
-```stata
-proportion newrace [pw=weight]
-```
-
-* Design‑based means by race (recommended):
-
-```stata
-mean totinc [pw=weight], over(newrace)
-
-svyset _n [pw=weight]
-svy: mean totinc, over(newrace)
-```
-
-> Note: `tabstat` does **not** accept `pweights`. Use `mean`/`svy:` for design‑based summaries.
-
-## Weighted OLS & Postestimation
-
-Main model (factor notation + robust SEs):
-
-```stata
-regress lntotinc i.newrace i.sex i.agegrp i.ssgrad i.pr [pw=weight], vce(robust)
-```
-
-Adjusted means and plot:
-
-```stata
-margins newrace
-marginsplot
-```
-
-(Optional) Export the plot:
-
-```stata
-graph export "figures/margins_newrace.png", replace width(2000)
-```
+---
 
 ## Requirements
+- Stata 17 or newer.  
+- Access to the 2016 Census PUMF (Individuals).  
 
-* **Stata 17+**.
-
-
-## Reproducibility & Style
-
-* Capture‑free code; clear **rename → label → recode** blocks.
-* Factor variables (`i.`/`c.`), interactions via `##` if needed.
-* All analyses use **[pw=weight]** and appropriate VCE (`vce(robust)` in the model).
-* Case discipline after `rename *, lower`.
+---
 
 ## Citation
+Statistics Canada. 2019. *Census of Population, 2016 [Canada] Public Use Microdata File (PUMF): Individuals File.*  
+Statistics Canada [producer and distributor], accessed September 10, 2021.  
+ID: pumf-98M0001-E-2016-individuals.  
 
-Statistics Canada. *2016 Census of Population Public Use Microdata File (PUMF): Individuals File.* Refer to `docs/pumf-98M0001-E-2016-individuals.pdf` for variable definitions and coding.
+---
+
+## License
+Use of the 2016 Census PUMF must comply with **Statistics Canada licensing terms**.  
+- Do **not** share or commit raw microdata.  
+- Only derived, de-identified outputs may be shared in compliance with license and institutional policies.  
+
