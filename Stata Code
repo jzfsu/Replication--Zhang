@@ -1,0 +1,122 @@
+************************************************************
+* 2016 Census PUMF — Race & Income mini study
+* Path updated to: \\smb-isl01.fsu.edu\citrix\JZ22\Desktop
+************************************************************
+
+log using "\\smb-isl01.fsu.edu\citrix\JZ22\Documents\CanD3-Zhang.log", replace
+
+* Import microdata
+import delimited using "\\smb-isl01.fsu.edu\citrix\JZ22\Desktop\pumf-98M0001-E-2016-individuals_F1.csv", ///
+    varnames(1) clear
+
+* Make ALL variable names lowercase
+rename *, lower
+	
+* Keep only the variables needed downstream (now all lowercase)
+keep weight dpgrsum totinc totinc_at sex agegrp ssgrad pr
+	
+	
+* Destring ONLY those (if any imported as string)
+ds, has(type string)
+local strvars `r(varlist)'
+if "`strvars'" != "" {
+    destring `strvars', replace ignore(" .,-")
+}
+
+compress
+
+/************************************************************
+* 1) Race from DPGRSUM -> White / Black / Asian / Other
+*    DPGRSUM codes (2016 PUMF): 
+*      1 White; 2 South Asian; 3 Chinese; 4 Black; 5 Filipino;
+*      6 Latin American; 7 Arab; 8 Southeast Asian; 9 West Asian;
+*     10 Korean; 11 Japanese; 12 VM n.i.e.; 13 Multiple VMs n.i.e.;
+*     14 White + VM; 15 Aboriginal peoples; 88 Not available.
+************************************************************/
+
+
+gen newrace = .
+replace newrace = 1 if dpgrsum == 1                                 // White
+replace newrace = 2 if dpgrsum == 4                                 // Black
+replace newrace = 3 if inlist(dpgrsum, 2,3,5,8,10,11)               // Asian (South/Chinese/Filipino/SE Asian/Korean/Japanese)
+replace newrace = 4 if inlist(dpgrsum, 6,7,9,12,13,14,15)           // Other (LatAm/Arab/WestAsian/VM n.i.e./Multiple/White+VM/Aboriginal)
+replace newrace = . if dpgrsum == 88                                // Not available -> missing
+
+label define newrace 1 "White" 2 "Black" 3 "Asian" 4 "Other"
+label values newrace newrace
+label var newrace "Race (DPGRSUM recode: White/Black/Asian/Other)"
+
+tab dpgrsum, m
+tab newrace, m
+
+
+/************************************************************
+* 2) Other recodes & labels
+************************************************************/
+
+* Sex
+label define sexlbl 1 "Male" 2 "Female"
+label values sex sexlbl
+label var sex "Sex"
+
+* Age group (treat Not available as missing per PUMF convention)
+recode agegrp (88 = .)
+label var agegrp "Age group (categorical)"
+
+* Secondary school graduation (treat 88/99 as missing)
+recode ssgrad (88 = .) (99 = .)
+label var ssgrad "Highest certificate/diploma (SSGRAD)"
+
+* Province / Territory
+label var pr "Province/Territory (PR)"
+
+
+/************************************************************
+* 3) Income cleaning and logs (handle PUMF special codes)
+*    For continuous income variables, the PUMF uses:
+*      88,888,888 = Not available; 99,999,999 = Not applicable.
+************************************************************/
+
+* Mark PUMF "not available / not applicable" as missing before logs
+replace totinc     = . if inlist(totinc,     88888888, 99999999)
+replace totinc_at  = . if inlist(totinc_at,  88888888, 99999999)
+
+* Log transform 
+
+gen double lntotinc = cond(totinc > 0, ln(totinc + 1), .)
+label var lntotinc "ln(Total income + 1)"
+
+
+/************************************************************
+* 4) Weighted descriptives
+************************************************************/
+proportion newrace [pw=weight]
+
+
+/* Design-based mean by group (keeps pweights) */
+mean totinc [pw=weight], over(newrace)
+
+/* Or, if you've svyset your design: */
+svyset _n [pw=weight]
+svy: mean totinc, over(newrace)
+
+
+*==========================
+* Weighted OLS 
+*==========================
+* Outcome: lntotinc
+* Categorical: newrace, sex, age group, education, province
+* Weights: [pw=weight]
+
+regress lntotinc  ///
+    i.newrace i.sex i.agegrp i.ssgrad i.pr ///
+    [pw=weight], vce(robust)
+
+/* Adjusted means (average predicted lntotinc) by race */
+margins newrace
+
+marginsplot
+
+
+log close
+
